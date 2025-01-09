@@ -72,16 +72,12 @@ client.on('messageCreate', async (message) => {
                             : "Out of hospital"; 
                             
                         let statusIcon = '';
-                        let statusText = '';
                         if (member.last_action.status === 'Online') {
                             statusIcon = '🟢';
-                            statusText = 'Online';
                         } else if (member.last_action.status === 'Idle') {
                             statusIcon = '🟡'; 
-                            statusText = 'Idle';
                         } else {
                             statusIcon = '🔴'; 
-                            statusText = 'Offline';
                         }
 
                         const attackLink = `https://www.torn.com/loader.php?sid=attack&user2ID=${member.id}`;
@@ -126,7 +122,7 @@ client.on('messageCreate', async (message) => {
                 } catch (updateError) {
                     console.error("Error updating embed:", updateError);
                 }
-            }, 10000); // Update every 10 seconds or as needed (this interval can be adjusted)
+            }, 10000); // Update every 10 seconds or as needed
         } catch (error) {
             console.error('Error fetching data:', error);
             message.reply("An error occurred while fetching the data.");
@@ -185,12 +181,16 @@ function updateEnvVariable(key, value) {
     console.log(`${key} updated in .env file.`);
 }
 
-// Function to format time as HH:MM:SS
-function formatTime(seconds) {
-    const hours = String(Math.floor(seconds / 3600)).padStart(2, '0');
-    const minutes = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
-    const secs = String(seconds % 60).padStart(2, '0');
-    return `${hours}:${minutes}:${secs}`;
-}
+// Create a simple server for Render
+const http = require('http');
+const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Bot is running!\n');
+});
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Server is listening on port ${PORT}`);
+});
 
+// Login to Discord
 client.login(process.env.DISCORD_TOKEN);
