@@ -4,6 +4,7 @@ require('dotenv').config();
 
 let factionId = process.env.FACTION_ID;
 let tornApiKey = process.env.TORN_API_KEY;
+let activeTimers = []; // To store active timers for !war command
 
 const client = new Client({
     intents: [
@@ -22,14 +23,15 @@ const getApiUrl = () => `https://api.torn.com/v2/faction/${factionId}/members?ke
 const getFactionDetailsUrl = () => `https://api.torn.com/faction/${factionId}?key=${tornApiKey}&selections=&striptags=true`;
 
 client.on('messageCreate', async (message) => {
-	// Command to display help
+    // Command to display help
     if (message.content.toLowerCase() === '!help') {
         const helpEmbed = new EmbedBuilder()
             .setTitle('Help - Bot Commands')
             .setColor('#3498db')
             .setDescription('Here are the commands you can use with this bot:')
             .addFields([
-                { name: '!war', value: 'Starts monitoring faction hospital timers and displays their user information.' },
+                { name: '!war', value: 'Starts monitoring faction hospital timers and displays the information.' },
+                { name: '!stop', value: 'Stops monitoring hospital timers.' },
                 { name: '!faction <id>', value: 'Changes the faction ID to monitor. Replace `<id>` with the new faction ID.' },
                 { name: '!help', value: 'Displays this help message with a list of available commands.' },
             ]);
@@ -37,7 +39,7 @@ client.on('messageCreate', async (message) => {
         await message.reply({ embeds: [helpEmbed] });
         return;
     }
-	
+
     // Start hospital timer updates
     if (message.content.toLowerCase() === '!war') {
         try {
@@ -121,7 +123,7 @@ client.on('messageCreate', async (message) => {
                 const timeUntilZero = (member.status.until - Math.floor(Date.now() / 1000)) * 1000;
 
                 if (timeUntilZero > 0) {
-                    setTimeout(async () => {
+                    const timer = setTimeout(async () => {
                         console.log(`Timer for ${member.name} reached 00:00:00. Updating...`);
                         try {
                             const updatedResponse = await fetch(getApiUrl());
@@ -136,11 +138,25 @@ client.on('messageCreate', async (message) => {
                             console.error("Error updating embed:", updateError);
                         }
                     }, timeUntilZero);
+
+                    activeTimers.push(timer);
                 }
             });
         } catch (error) {
             console.error('Error fetching data:', error);
             message.reply("An error occurred while fetching the data.");
+        }
+    }
+
+    // Stop all active timers
+    if (message.content.toLowerCase() === '!stop') {
+        if (activeTimers.length > 0) {
+            activeTimers.forEach((timer) => clearTimeout(timer));
+            activeTimers = [];
+            console.log('All timers have been cleared.');
+            message.reply("Hospital timer updates have been stopped.");
+        } else {
+            message.reply("No active timers to stop.");
         }
     }
 
@@ -188,19 +204,13 @@ function updateEnvVariable(key, value) {
 // Create a simple server for Render
 const http = require('http');
 const server = http.createServer((req, res) => {
-    if (req.url === '/health') {
-        res.writeHead(200, { 'Content-Type': 'text/plain' });
-        res.end('OK');
-    } else {
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end('Not Found');
-    }
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Bot is running!\n');
 });
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server is listening on port ${PORT}`);
 });
-
 
 // Login to Discord
 client.login(process.env.DISCORD_TOKEN);
