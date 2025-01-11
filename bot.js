@@ -105,24 +105,28 @@ client.on('messageCreate', async (message) => {
                 clearInterval(fetchInterval);
             }
 
-            fetchInterval = setInterval(async () => {
-                console.log('Updating hospital timers...');
-                try {
-                    const updatedResponse = await fetch(getApiUrl());
-                    const updatedData = await updatedResponse.json();
+            // Set timeouts to update when a timer reaches zero
+            members.forEach((member) => {
+                const timeUntilZero = (member.status.until - Math.floor(Date.now() / 1000)) * 1000;
 
-                    if (!updatedData.members) {
-                        console.error("Failed to fetch updated data.");
-                        return;
-                    }
+                if (timeUntilZero > 0) {
+                    setTimeout(async () => {
+                        console.log(`Timer for ${member.name} reached 00:00:00. Updating...`);
+                        try {
+                            const updatedResponse = await fetch(getApiUrl());
+                            const updatedData = await updatedResponse.json();
 
-                    const updatedMembers = Object.values(updatedData.members);
-                    updatedMembers.sort((a, b) => a.status.until - b.status.until);
-                    await sendOrUpdateEmbeds(updatedMembers, true); 
-                } catch (updateError) {
-                    console.error("Error updating embed:", updateError);
+                            if (updatedData.members) {
+                                const updatedMembers = Object.values(updatedData.members);
+                                updatedMembers.sort((a, b) => a.status.until - b.status.until);
+                                await sendOrUpdateEmbeds(updatedMembers, true);
+                            }
+                        } catch (updateError) {
+                            console.error("Error updating embed:", updateError);
+                        }
+                    }, timeUntilZero);
                 }
-            }, 10000); // Update every 10 seconds or as needed
+            });
         } catch (error) {
             console.error('Error fetching data:', error);
             message.reply("An error occurred while fetching the data.");
