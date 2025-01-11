@@ -4,7 +4,6 @@ require('dotenv').config();
 
 let factionId = process.env.FACTION_ID;
 let tornApiKey = process.env.TORN_API_KEY;
-let fetchInterval = null; // Variable to store the interval ID for updating hospital timers
 
 const client = new Client({
     intents: [
@@ -23,6 +22,22 @@ const getApiUrl = () => `https://api.torn.com/v2/faction/${factionId}/members?ke
 const getFactionDetailsUrl = () => `https://api.torn.com/faction/${factionId}?key=${tornApiKey}&selections=&striptags=true`;
 
 client.on('messageCreate', async (message) => {
+	// Command to display help
+    if (message.content.toLowerCase() === '!help') {
+        const helpEmbed = new EmbedBuilder()
+            .setTitle('Help - Bot Commands')
+            .setColor('#3498db')
+            .setDescription('Here are the commands you can use with this bot:')
+            .addFields([
+                { name: '!war', value: 'Starts monitoring faction hospital timers and displays their user information.' },
+                { name: '!faction <id>', value: 'Changes the faction ID to monitor. Replace `<id>` with the new faction ID.' },
+                { name: '!help', value: 'Displays this help message with a list of available commands.' },
+            ]);
+
+        await message.reply({ embeds: [helpEmbed] });
+        return;
+    }
+	
     // Start hospital timer updates
     if (message.content.toLowerCase() === '!war') {
         try {
@@ -70,7 +85,7 @@ client.on('messageCreate', async (message) => {
                         let timerDisplay = hospitalTime > 0
                             ? `<t:${member.status.until}:R>`
                             : "Out of hospital"; 
-                            
+
                         let statusIcon = '';
                         if (member.last_action.status === 'Online') {
                             statusIcon = '🟢';
@@ -101,10 +116,6 @@ client.on('messageCreate', async (message) => {
 
             await sendOrUpdateEmbeds(members);
 
-            if (fetchInterval) {
-                clearInterval(fetchInterval);
-            }
-
             // Set timeouts to update when a timer reaches zero
             members.forEach((member) => {
                 const timeUntilZero = (member.status.until - Math.floor(Date.now() / 1000)) * 1000;
@@ -130,17 +141,6 @@ client.on('messageCreate', async (message) => {
         } catch (error) {
             console.error('Error fetching data:', error);
             message.reply("An error occurred while fetching the data.");
-        }
-    }
-
-    // Stop hospital timer updates
-    if (message.content.toLowerCase() === '!stop') {
-        if (fetchInterval) {
-            clearInterval(fetchInterval); // Stop the interval
-            fetchInterval = null; // Reset the interval ID
-            message.reply("Hospital timer updates have been stopped.");
-        } else {
-            message.reply("The hospital timer updates are not running.");
         }
     }
 
