@@ -32,7 +32,7 @@ client.on('messageCreate', async (message) => {
             .setColor('#3498db')
             .setDescription('Here are the commands you can use with this bot:')
             .addFields([
-                { name: '!war', value: 'Starts monitoring faction hospital timers and displays the information.' },
+                { name: '!war', value: 'Starts monitoring faction hospital timers and displays their user information.' },
                 { name: '!stop', value: 'Stops monitoring hospital timers.' },
                 { name: '!faction <id>', value: 'Changes the faction ID to monitor. Replace `<id>` with the new faction ID.' },
                 { name: '!help', value: 'Displays this help message with a list of available commands.' },
@@ -44,6 +44,11 @@ client.on('messageCreate', async (message) => {
 
     // Start hospital timer updates
     if (message.content.toLowerCase() === '!war') {
+        if (fetchInterval) {
+            message.reply('Monitoring is already active. Use !stop before starting again.');
+            return;
+        }
+        
         try {
             console.log('Fetching faction details...');
             const factionResponse = await fetch(getFactionDetailsUrl());
