@@ -91,9 +91,14 @@ client.on('messageCreate', async (message) => {
                     chunks[i].forEach((member) => {
                         const hospitalTime = (member.status.until - Math.floor(Date.now() / 1000)) || 0;
 
-                        let timerDisplay = hospitalTime > 0
-                            ? `<t:${member.status.until}:R>`
-                            : "Out of hospital"; 
+                        let timerDisplay;
+                        if (member.status.state === 'Travelling') {
+                            timerDisplay = `Traveling to ${member.status.travel.destination}`;
+                        } else if (hospitalTime > 0) {
+                            timerDisplay = `<t:${member.status.until}:R>`;
+                        } else {
+                            timerDisplay = "Out of hospital";
+                        }
 
                         let statusIcon = '';
                         if (member.last_action.status === 'Online') {
