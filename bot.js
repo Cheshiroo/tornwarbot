@@ -4,7 +4,9 @@ require('dotenv').config();
 
 let factionId = process.env.FACTION_ID;
 let tornApiKey = process.env.TORN_API_KEY;
-let activeTimers = []; // To store active timers for !war command
+let fetchInterval = null; // Variable to store the interval ID for updating hospital timers
+let fetchInProgress = false; // Lock to prevent overlapping fetches
+let updateCounter = 0; // Counter to track the number of updates
 
 const client = new Client({
     intents: [
@@ -114,49 +116,68 @@ client.on('messageCreate', async (message) => {
                         embedMessages.push(sentMessage);
                     }
                 }
+
+                // Remove any extra embeds if fewer chunks are needed in the update
+                while (embedMessages.length > chunks.length) {
+                    const removedMessage = embedMessages.pop();
+                    await removedMessage.delete();
+                }
             };
 
             await sendOrUpdateEmbeds(members);
 
-            // Set timeouts to update when a timer reaches zero
-            members.forEach((member) => {
-                const timeUntilZero = (member.status.until - Math.floor(Date.now() / 1000)) * 1000;
+            if (fetchInterval) {
+                clearInterval(fetchInterval);
+            }
 
-                if (timeUntilZero > 0) {
-                    const timer = setTimeout(async () => {
-                        console.log(`Timer for ${member.name} reached 00:00:00. Updating...`);
-                        try {
-                            const updatedResponse = await fetch(getApiUrl());
-                            const updatedData = await updatedResponse.json();
+            fetchInterval = setInterval(async () => {
+                if (fetchInProgress) return; // Prevent overlapping fetches
+                fetchInProgress = true;
 
-                            if (updatedData.members) {
-                                const updatedMembers = Object.values(updatedData.members);
-                                updatedMembers.sort((a, b) => a.status.until - b.status.until);
-                                await sendOrUpdateEmbeds(updatedMembers, true);
-                            }
-                        } catch (updateError) {
-                            console.error("Error updating embed:", updateError);
-                        }
-                    }, timeUntilZero);
+                try {
+                    updateCounter++; // Increment the counter
+                    console.log(`${updateCounter} Updating hospital timers...`);
 
-                    activeTimers.push(timer);
+                    const updatedResponse = await fetch(getApiUrl());
+                    const updatedData = await updatedResponse.json();
+
+                    console.log(`API Response Status: ${updatedResponse.status}`);
+
+                    if (!updatedData.members) {
+                        console.error("Failed to fetch updated data.");
+                        return;
+                    }
+
+                    const updatedMembers = Object.values(updatedData.members);
+                    updatedMembers.sort((a, b) => a.status.until - b.status.until);
+                    await sendOrUpdateEmbeds(updatedMembers, true);
+                } catch (updateError) {
+                    console.error("Error updating embed:", updateError);
+                } finally {
+                    fetchInProgress = false;
                 }
-            });
+            }, 15000); // Update every 15 seconds
+
+            // Monitor memory usage
+            setInterval(() => {
+                const memoryUsage = process.memoryUsage();
+                console.log(`Memory Usage: ${Math.round(memoryUsage.heapUsed / 1024 / 1024)} MB`);
+            }, 60000); // Log memory usage every minute
+
         } catch (error) {
             console.error('Error fetching data:', error);
             message.reply("An error occurred while fetching the data.");
         }
     }
 
-    // Stop all active timers
+    // Stop hospital timer updates
     if (message.content.toLowerCase() === '!stop') {
-        if (activeTimers.length > 0) {
-            activeTimers.forEach((timer) => clearTimeout(timer));
-            activeTimers = [];
-            console.log('All timers have been cleared.');
+        if (fetchInterval) {
+            clearInterval(fetchInterval); // Stop the interval
+            fetchInterval = null; // Reset the interval ID
             message.reply("Hospital timer updates have been stopped.");
         } else {
-            message.reply("No active timers to stop.");
+            message.reply("The hospital timer updates are not running.");
         }
     }
 
@@ -204,8 +225,13 @@ function updateEnvVariable(key, value) {
 // Create a simple server for Render
 const http = require('http');
 const server = http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Bot is running!\n');
+    if (req.url === '/health') {
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end('OK');
+    } else {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Not Found');
+    }
 });
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
