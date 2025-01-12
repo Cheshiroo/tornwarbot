@@ -92,8 +92,8 @@ client.on('messageCreate', async (message) => {
                         const hospitalTime = (member.status.until - Math.floor(Date.now() / 1000)) || 0;
 
                         let timerDisplay;
-                        if (member.status.state === 'Travelling') {
-                            timerDisplay = `Traveling to ${member.status.travel.destination}`;
+                        if (member.status.state === 'Traveling') {
+                            timerDisplay = `Traveling`;
                         } else if (hospitalTime > 0) {
                             timerDisplay = `<t:${member.status.until}:R>`;
                         } else {
