@@ -242,13 +242,8 @@ function updateEnvVariable(key, value) {
 // Create a simple server for Render
 const http = require('http');
 const server = http.createServer((req, res) => {
-    if (req.url === '/health') {
-        res.writeHead(200, { 'Content-Type': 'text/plain' });
-        res.end('OK');
-    } else {
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end('Not Found');
-    }
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Bot is running!\n');
 });
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
