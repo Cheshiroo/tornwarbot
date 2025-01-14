@@ -73,14 +73,19 @@ client.on('messageCreate', async (message) => {
             const members = Object.values(data.members);
 
             // Sort members by when they will be out of the hospital (soonest first)
-            members.sort((a, b) => a.status.until - b.status.until);
+            await new Promise(resolve => {
+                setImmediate(() => {
+                    members.sort((a, b) => a.status.until - b.status.until);
+                    resolve();
+                });
+            });            
 
             const embedMessages = []; // Store sent messages for updates
 
             const sendOrUpdateEmbeds = async (membersData, isUpdate = false) => {
                 const chunks = [];
-                for (let i = 0; i < membersData.length; i += 25) {
-                    chunks.push(membersData.slice(i, i + 25));
+                for (let i = 0; i < membersData.length; i += 20) {
+                    chunks.push(membersData.slice(i, i + 20));
                 }
 
                 for (let i = 0; i < chunks.length; i++) {
@@ -123,7 +128,7 @@ client.on('messageCreate', async (message) => {
                         await embedMessages[i].edit({ embeds: [embed] });
                     } else {
                         const sentMessage = await message.reply({ embeds: [embed] });
-                        embedMessages.push(sentMessage);
+                        embedMessages[i] = sentMessage;
                     }
                 }
 
@@ -145,12 +150,14 @@ client.on('messageCreate', async (message) => {
                 fetchInProgress = true;
 
                 try {
-                    updateCounter++; // Increment the counter
+                    const startTime = Date.now();
                     console.log(`${updateCounter} Updating hospital timers...`);
+                    updateCounter++; // Increment the counter
 
                     const updatedResponse = await fetch(getApiUrl());
                     const updatedData = await updatedResponse.json();
 
+                    console.log(`Fetch time: ${Date.now() - startTime}ms`);
                     console.log(`API Response Status: ${updatedResponse.status}`);
 
                     if (!updatedData.members) {
